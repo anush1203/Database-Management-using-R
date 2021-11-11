@@ -1,0 +1,247 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(RSQLite)
+fpath = "C:/Users/anush/NEU_resources_and_projects/DBMS/publicationsdb.db"
+
+dbcon <- dbConnect(RSQLite::SQLite(), fpath)
+```
+
+```{sql connection=dbcon}
+PRAGMA foreign_keys = ON
+```
+
+
+```{sql connection=dbcon}
+CREATE TABLE Course(
+  nid TEXT PRIMARY KEY NOT NULL,
+  title TEXT NOT NULL,
+  lengthInDays NUMBER NOT NULL
+)
+```
+
+```{sql connection=dbcon}
+INSERT INTO Course values 
+(1,"DBMS",120),
+(2,"Algo",125)
+```
+
+```{sql connection=dbcon}
+SELECT * FROM Course
+```
+
+#-------------------------------------------------------------------
+
+```{sql connection=dbcon}
+DROP TABLE if exists Certifications
+```
+
+```{sql connection=dbcon}
+CREATE TABLE Certifications(
+  cid NUMBER PRIMARY KEY NOT NULL,
+  certification TEXT,
+  CHECK (certification IN ('CAP','CSM','CSTE','CBAP','PMP'))
+)
+```
+
+```{sql connection=dbcon}
+INSERT INTO Certifications values 
+(1,"CAP"),
+(2,"CSM")
+```
+
+```{sql connection=dbcon}
+SELECT * FROM Certifications
+```
+
+#-------------------------------------------------------------------
+
+```{sql connection=dbcon}
+DROP TABLE IF EXISTS Author
+```
+
+```{sql connection=dbcon}
+CREATE TABLE Author(
+  aid NUMBER PRIMARY KEY NOT NULL,
+  name TEXT NOT NULL
+)
+```
+
+```{sql connection=dbcon}
+INSERT INTO Author values 
+(1,"Anush"),
+(2,"Anirudh"),
+(3,"Adithya")
+```
+
+#TRIGGER---1
+```{sql connection=dbcon}
+DROP TRIGGER FKViolation
+```
+
+```{sql connection=dbcon}
+CREATE TRIGGER FKViolation
+BEFORE DELETE ON Author
+BEGIN
+SELECT CASE 
+WHEN (SELECT COUNT(aid) FROM Topic WHERE aid=OLD.aid) > 0
+THEN RAISE(ABORT,
+'Foreign Key Violation: Can not delete row in Author as there is aid in Topic referenced as Foreign Key')
+END; 
+END;
+```
+
+```{sql connection=dbcon}
+DELETE FROM Author where aid=1
+```
+
+```{sql connection=dbcon}
+SELECT * FROM Author 
+```
+
+#-------------------------------------------------------------------
+
+```{sql connection=dbcon}
+DROP TABLE IF EXISTS CertificationsOfAuthor
+```
+#CertificationOfAuthor table is the result of normalization. This makes it easy.
+```{sql connection=dbcon}
+CREATE TABLE CertificationsOfAuthor(
+  cid NUMBER NOT NULL,
+  aid NUMBER NOT NULL,
+  PRIMARY KEY(cid,aid),
+  FOREIGN KEY (aid) REFERENCES Author(aid),
+  FOREIGN KEY (cid) REFERENCES Certifications(cid)
+)
+```
+
+```{sql connection=dbcon}
+SELECT * FROM CertificationsOfAuthor
+```
+
+#-------------------------------------------------------------------
+
+```{sql connection=dbcon}
+Drop table if exists Topic
+```
+
+```{sql connection=dbcon}
+CREATE TABLE Topic(
+  tid NUMBER PRIMARY KEY NOT NULL,
+  title TEXT NOT NULL,
+  lengthInHrs NUMBER NOT NULL,
+  subject TEXT NOT NULL,
+  aid NUMBER,
+  UNIQUE(subject),
+  FOREIGN KEY (aid) REFERENCES AUTHOR(aid) ON DELETE SET NULL
+)
+```
+
+#TRIGGER---2
+```{sql connection=dbcon}
+CREATE TRIGGER valid_subjects
+   BEFORE INSERT ON Topic
+BEGIN
+   SELECT
+      CASE
+	WHEN NEW.subject NOT IN ('ML','SQL','R','JAVA') THEN
+   	  RAISE (ABORT,'SELECT FROM GIVEN SUBJECTS')
+       END;
+END;
+```
+
+```{sql connection=dbcon}
+INSERT INTO Topic (tid,title,lengthInHrs,subject,aid) VALUES (123,'Database',3,'SQL',1),(456,'Neural Networks',6,'ML',3)
+```
+
+```{sql connection=dbcon}
+INSERT INTO Topic (tid,title,lengthInHrs,subject,aid) VALUES (234,'English',4,'Literature',2)
+```
+
+```{sql connection=dbcon}
+SELECT * FROM Topic
+```
+
+#-------------------------------------------------------------------
+
+```{sql connection=dbcon}
+CREATE TABLE CourseTopic(
+  nid NUMBER NOT NULL,
+  tid NUMBER NOT NULL,
+  PRIMARY KEY(nid,tid),
+  FOREIGN KEY (tid) REFERENCES Topic(tid),
+  FOREIGN KEY (nid) REFERENCES Course(nid)
+)
+```
+
+```{sql connection=dbcon}
+SELECT * FROM CourseTopic
+```
+
+#-------------------------------------------------------------------
+
+#seperate table for email-ids to avoid multivalued attributes.
+```{sql connection=dbcon}
+drop table EmailIds
+```
+
+```{sql connection=dbcon}
+CREATE TABLE EmailIds(
+  aid NUMBER NOT NULL,
+  email TEXT PRIMARY KEY NOT NULL,
+  FOREIGN KEY (aid) REFERENCES Author(aid)
+)
+```
+
+#TRIGGER---3
+```{sql connection=dbcon}
+CREATE TRIGGER validate_emailID
+   BEFORE INSERT ON EmailIds
+BEGIN
+   SELECT
+      CASE
+	WHEN NEW.email NOT LIKE '%_@_%.__%' THEN
+   	  RAISE (ABORT,'INVALID EMAIL ID')
+       END;
+END;
+```
+
+#Correct values for email IDs
+```{sql connection=dbcon}
+INSERT INTO EmailIds (aid, email) VALUES (1,"anush@gmail.com"),(2,"anirudh@yahoo.com")
+
+```
+
+#Incorrect values for email ID
+```{sql connection=dbcon}
+INSERT INTO EmailIds (aid, email) VALUES (3,"adityagmail.com")
+```
+
+#Displaying the EmailIds Table
+```{sql connection=dbcon}
+SELECT * FROM EmailIds
+```
+
+#-------------------------------------------------------------------
+
+```{r}
+dbDisconnect(dbcon)
+```
+
+
+
+#I have defined 3 triggers. 
+
+#TRIGGER---1
+The first trigger is fired when we try to delete a row/tuple from a parent table whose Primary key is referenced as a Foreign key in the child table. The parent table here is the Author with AID as PK. The Child tables are Topic, CertificationsOfAuthors, EmailIds. Therefore, if we try to delete a row in parent we fire the trigger displaying that this is an error.
+
+#Trigger---2
+I had made a mistake in Assignment 3. I had not dealt with the list of subjects. Therefore I took this opportunity to rectify it. This trigger goes of if we try to add any subject that is not in the list. This ensures that I always have subjects from the given lists.
+
+#TRIGGER---3
+The third and final trigger is fired when the format of the email ID is wrong. This is done to ensure that the user provides us with the correct email ID. 
+
+##I have attached screenshots of the working of the triggers. We can even run the chunks to see this live.

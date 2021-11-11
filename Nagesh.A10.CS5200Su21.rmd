@@ -1,0 +1,177 @@
+##QUESTION 1
+###ERD
+
+![ERD](C:/Users/anush/Downloads/assign10ERD (1).png)
+
+```{r}
+library(sqldf)
+library(dplyr)
+```
+
+##Creating a database
+```{r}
+library(RSQLite)
+fpath <- "C:/Users/anush/NEU_resources_and_projects/DBMS"
+db <- "assign10.sqlite"
+dbcon <- dbConnect(RSQLite::SQLite(),paste0(fpath,db))
+dbExecute(dbcon, "PRAGMA foreign_keys = OFF;")
+```
+
+##QUESTION 2
+###Creating tables
+```{r}
+dbExecute(dbcon,"DROP TABLE IF EXISTS BOOK")
+
+dbExecute(dbcon,"CREATE TABLE BOOK
+(
+  book_id INTEGER PRIMARY KEY NOT NULL,
+  title TEXT,
+  price REAL,
+  publicationDate date,
+  edition INTEGER,
+  description TEXT
+);
+          ")
+```
+
+```{r}
+dbExecute(dbcon,"DROP TABLE IF EXISTS AUTHOR")
+
+dbExecute(dbcon,"CREATE TABLE AUTHOR
+(
+  aid INTEGER PRIMARY KEY NOT NULL,
+  author_Name TEXT
+);
+          ")
+```
+
+```{r}
+dbExecute(dbcon,"DROP TABLE IF EXISTS BOOKAUTHOR")
+
+dbExecute(dbcon,"CREATE TABLE BOOKAUTHOR
+(
+  aid INTEGER NOT NULL,
+  book_id INTEGER NOT NULL,
+  PRIMARY KEY(aid,book_id),
+  FOREIGN KEY (aid) REFERENCES AUTHOR (aid),
+  FOREIGN KEY (book_id) REFERENCES BOOK (book_id)
+);
+          ")
+```
+
+```{r}
+dbExecute(dbcon,"DROP TABLE IF EXISTS GENRE")
+
+dbExecute(dbcon,"CREATE TABLE GENRE
+(
+  gid INTEGER PRIMARY KEY NOT NULL,
+  Genre TEXT
+);
+          ")
+```
+
+```{r}
+dbExecute(dbcon,"DROP TABLE IF EXISTS BOOKGENRE")
+
+dbExecute(dbcon,"CREATE TABLE BOOKGENRE
+(
+  gid INTEGER NOT NULL,
+  book_id INTEGER NOT NULL,
+  PRIMARY KEY(gid,book_id),
+  FOREIGN KEY (gid) REFERENCES GENRE (gid),
+  FOREIGN KEY (book_id) REFERENCES BOOK (book_id)
+);
+          ")
+```
+
+##QUESTION 3
+###Load XML data into a Dataframe
+```{r}
+library(XML)
+path <- "C:/Users/anush/NEU_resources_and_projects/DBMS"
+xmlFile <- "Books-v3.xml"
+
+xmlObj <- xmlParse(file = paste(path,xmlFile,sep="/"))
+root <- xmlRoot(xmlObj)
+title <- xmlSApply(root,function(x)xmlValue(x[['title']]))
+price <- xmlSApply(root,function(x)xmlValue(x[['price']]))
+publish_date <- xmlSApply(root,function(x)xmlValue(x[['publish_date']]))
+description <- xmlSApply(root,function(x)xmlValue(x[['description']]))
+author_name <- xmlSApply(root,function(x)xmlValue(x[['author']]))
+Genre <- xmlSApply(root,function(x)xmlValue(x[['genre']]))
+edition <- xmlSApply(root,function(x)xmlValue(x[['edition']]))
+```
+
+###Creating different dataframes
+```{r}
+Book.df <- data.frame(book_id = integer(), title = character(), price = integer(), description = character(), edition = integer(), publish_date = character(), stringsAsFactors = F)
+
+Author.df <- data.frame(aid = integer(), author_name = character(), stringsAsFactors = F)
+
+AuthorBook.df <- data.frame(aid = integer(), book_id = integer(), stringsAsFactors = F)
+
+Genre.df <- data.frame(gid = integer(),Genre = character(),stringsAsFactors = F)
+
+GenreBook.df <- data.frame(gid = integer(), book_id = integer(), stringsAsFactors = F)
+```
+
+```{r}
+All.df <- data.frame("title"=title,"author"=author_name,"Genre_Name"=Genre,"price"=price,"publish_date"=publish_date,"edition"=edition,"description"=description)
+
+Book.df <- tibble::rowid_to_column(All.df,"book_id")
+
+Author.df <- tibble::rowid_to_column(data.frame("author_name"=unique(author_name)),"aid")
+
+Genre.df <- tibble::rowid_to_column(data.frame("Genre"=unique(Genre)),"gid")
+
+AuthorBook.df <- merge(Book.df[,c(1,3)], Author.df, by.x="author", by.y="author_name")
+
+GenreBook.df<-merge(Book.df[,c(1,4)], Genre.df, by.x = "Genre_Name", by.y = "Genre")
+
+Book.df$price <- as.factor(Book.df$price)  
+```
+
+##QUESTION 4
+###Writing the dataframes into the database tables
+```{r}
+dbWriteTable(dbcon, "Author", Author.df,overwrite=TRUE) 
+dbWriteTable(dbcon, "Genre", Genre.df,overwrite=TRUE) 
+dbWriteTable(dbcon, "Book", Book.df[,-c(3,4)],overwrite=TRUE) 
+dbWriteTable(dbcon, "AuthorBook", AuthorBook.df[,c(3,2)],overwrite=TRUE) 
+dbWriteTable(dbcon, "GenreBook", GenreBook.df[,c(3,2)],overwrite=TRUE) 
+```
+
+##QUESTION 5
+##5(A)
+```{sql connection=dbcon}
+
+select count(*) from (select G.Genre,count(*) as NumBooks from Book B inner join GenreBook GB on B.book_id=GB.book_id inner join Genre G on GB.gid=G.gid group by G.Genre having NumBooks >=3 ) 
+
+```
+
+##5(B)
+```{sql connection=dbcon}
+
+Select B.publish_date from Book B inner join AuthorBook AB on B.book_id=AB.book_id inner join Author A on AB.aid = A.aid 
+where A.author_name like '%Tim' order by B.publish_date DESC limit 1
+
+```
+
+##5(C)
+```{sql connection=dbcon}
+
+select G.Genre,count(*) as NumBooks,MAX(B.price)-MIN(B.price) as Range from Book B inner join GenreBook GB on B.book_id=GB.book_id
+inner join Genre G on GB.gid=G.gid group by G.Genre
+
+```
+
+##5(D)
+```{sql connection=dbcon}
+
+select B.title,A.author_name from Book B
+inner join AuthorBook AB on B.book_id=AB.book_id 
+inner join Author A on AB.aid=A.aid 
+where CAST(B.price as numeric) < 1.25*(Select CAST(AVG(price)as numeric) from Book) AND CAST(B.price as numeric) > 0.75*(Select CAST(AVG(price)as numeric) from Book)
+
+```
+

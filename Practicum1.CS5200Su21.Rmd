@@ -1,0 +1,107 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(RMySQL)  
+
+db_user <- 'root'
+db_password <- 'Banglaore123$'
+db_name <- 'practicum'
+db_table <- 'some_test'
+db_host <- '127.0.0.1'
+db_port <- 3306 
+
+mydb <-  dbConnect(MySQL(), user = db_user, password = db_password,
+                 dbname = db_name, host = db_host, port = db_port)
+```
+
+
+#AIRLINE DETAILS
+```{sql connection=}
+CREATE TABLE Airline(
+airline_ID INTEGER PRIMARY KEY NOT NULL,
+airline_name TEXT NOT NULL 
+)
+```
+
+#AIRCRAFT DETAILS
+```{sql connection=}
+CREATE TABLE Aircraft(
+  aircraft_ID INTEGER PRIMARY KEY NOT NULL,
+  aircraft_type TEXT,
+  aircraft_model TEXT NOT NULL,
+  number_of_engines NUMBER NOT NULL,
+  is_airplane_large TEXT,
+  airline_ID INTEGER,
+  FOREIGN KEY(airline_ID) REFERENCES Airline(airline_ID)
+)
+```
+
+#BIRD DETAILS
+```{sql connection=}
+CREATE TABLE Bird(
+  bird_ID NUMBER PRIMARY KEY NOT NULL,
+  species TEXT,
+  size TEXT NOT NULL
+)
+```
+
+#BIRD STRUCK DETAILS
+```{sql connection=}
+CREATE TABLE BirdStruck(
+  bs_ID NUMBER PRIMARY KEY NOT NULL,
+  number_struck NOT NULL,
+  number_struck_actual NOT NULL
+)
+```
+
+#EVENTS
+```{sql connection=}
+CREATE TABLE Events(
+  event_ID NUMBER PRIMARY KEY NOT NULL,
+  phase_of_flight TEXT,
+  altitude_bin TEXT,
+  feet_above NUMBER NOT NULL,
+  flight_date DATE NOT NULL,
+  sky TEXT NOT NULL,
+  precipitation TEXT NOT NULL
+)
+```
+
+#LOCATION DETAILS
+```{sql connection=}
+CREATE TABLE LocationDetails(
+  location_ID NUMBER PRIMARY KEY NOT NULL,
+  airport_name TEXT NOT NULL,
+  state TEXT NOT NULL
+)
+```
+
+#COLLISSION DETAILS
+```{sql connection=}
+CREATE TABLE Collision(
+  c_ID NUMBER PRIMARY KEY NOT NULL,
+  impact_to_flight TEXT NOT NULL,
+  indicated_damage TEXT NOT NULL,
+  pilot_warned TEXT NOT NULL,          #MAYBE USE BOOLEAN
+  remarks TEXT,
+  number_of_injured NUMBER NOT NULL,
+  cost NUMBER NOT NULL,
+  remains_collected TEXT NOT NULL,     #MAYBE USE BOOLEAN
+  remains_submitted TEXT NOT NULL,     #MAYBE USE BOOLEAN
+  airline_ID NUMBER,
+  bird_ID NUMBER,
+  bs_ID NUMBER,
+  event_ID NUMBER,
+  location_ID NUMBER,
+  FOREIGN KEY(airline_ID) REFERENCES Airline(airline_ID)
+  FOREIGN KEY(bird_ID) REFERENCES Bird(bird_ID)
+  FOREIGN KEY(bs_ID) REFERENCES BirdStruck(bs_ID)
+  FOREIGN KEY(event_ID) REFERENCES Events(event_ID)
+  FOREIGN KEY(location_ID) REFERENCES LocationDetails(location_ID)
+)
+```
+

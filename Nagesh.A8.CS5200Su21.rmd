@@ -1,0 +1,23 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(XML)
+```
+
+```{r parseXML}
+path <- "C:/Users/anush/NEU_resources_and_projects/DBMS"
+xmlFile <- "ntxsn.xml"
+xmlObj <- xmlParse(file = paste(path,xmlFile,sep="/"),validate=T)
+```
+
+
+Question 2
+```{r executeXPath}
+xpathEx <- "count(/txns/Trade[@cusip='IG'])"
+test <- xpathSApply(xmlObj, xpathEx,xmlValue)
+test
+```
+

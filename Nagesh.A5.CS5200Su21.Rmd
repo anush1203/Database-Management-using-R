@@ -1,0 +1,77 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(RSQLite)
+library(sqldf)
+db.con<-dbConnect(SQLite(), dbname="C:/Users/anush/NEU_resources_and_projects/DBMS/MediaDB2.db")
+```
+
+#Question 1
+```{r}
+sqlcmd="SELECT * from invoice_items"
+rs = dbGetQuery(db.con, sqlcmd)
+
+```
+
+```{r}
+rs$ExtPrice <- rs$Quantity * rs$UnitPrice
+```
+```{r}
+round(mean(rs$ExtPrice),2)
+```
+
+
+#Question 2
+```{r}
+library(sqldf)
+sqldf("select * from rs")
+```
+```{r}
+library(sqldf)
+sqldf("select InvoiceId, sum(ExtPrice) as Total, count(invoiceLineId) as Number_of_items from rs group by InvoiceId")
+```
+
+
+#Question3
+```{r}
+rs1<-sqldf("select InvoiceId, sum(ExtPrice) as Total, count(invoiceLineId) as Number_of_items from rs group by InvoiceId")
+
+plot(x = rs1$Number_of_items, y = rs1$Total, main="Total items v/s Total", xlab = "Number of Items", ylab= "Total")
+```
+
+
+#Question4
+#Added discounted price. When number of itmes greater than 5, update DiscPrice column by giving 10% off on Total. IF number of items < 6, then just print the total without any discount in DIscPrice as it is not apporpriate to assign it 0 or NULL.
+```{r}
+rs2 <- rs1
+rs2$DiscPrice <- 0
+sql1 <- "select * from Main.rs2"
+sqlCmd2 <- "update rs2 set DiscPrice =total*0.9 where number_of_items>5"
+rs2 <- sqldf(c(sqlCmd2,sql1)) 
+rs3<-rs2
+sql2 <- "select * from Main.rs3"
+sqlCmd4 <- "update rs3 set DiscPrice = Total where number_of_items<6"
+rs3 <- sqldf(c(sqlCmd4,sql2))
+rs3
+```
+
+#Part of the table to show the update command in question 4 works when number of itmes is greater than 5 with sqldf
+```{r}
+library(sqldf)
+rs3<- sqldf("Select * from rs2 where number_of_items>5")
+rs3
+```
+
+#Created different versions of dataframes to avoid confusion. rs,rs1 and rs2 makes it easier to understand.
+
+```{r}
+dbDisconnect(db.con)
+```
+

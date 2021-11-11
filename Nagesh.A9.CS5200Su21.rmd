@@ -1,0 +1,69 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+
+```{r}
+library(XML)
+```
+
+Establish a connection to the provided XML file
+```{r}
+path <- "C:/Users/anush/NEU_resources_and_projects/DBMS"
+xmlFile <- "Books-v3.xml"
+
+xmlDoc <- xmlParse(file = paste(path,xmlFile,sep="/"))
+```
+
+Question 1
+Titles and Prices of books written by Galos, Mike.
+```{r}
+xpathEx1 <- "//catalog/book[author='Galos, Mike']/title"
+xpathEx2 <- "//catalog/book[author='Galos, Mike']/price"
+Title <- xpathSApply(xmlDoc,xpathEx1,xmlValue)
+Price <- xpathSApply(xmlDoc,xpathEx2,xmlValue)
+df1 <- data.frame(Title,Price)
+df1
+```
+
+Question 2
+Genre of book with id 'bk109'
+```{r}
+xpathEx <- "//catalog/book [@id='bk109']/genre"
+Genre <- xpathSApply(xmlDoc,xpathEx,xmlValue)
+df2 <- data.frame(Genre)
+df2
+```
+
+Question 3
+Titles of books that are cheapest. Using min
+```{r}
+xpathEx <- "//catalog/book[price = min(//catalog/book/price)]/title"
+Title <- xpathSApply(xmlDoc, xpathEx,xmlValue)
+df3 <- data.frame(Title)
+df3
+```
+
+Question 4
+Titles and prices of books in Computer Genre.
+```{r}
+xpathEx1 <- "//catalog/book[genre='Computer']/title "
+xpathEx2 <- "//catalog/book[genre='Computer']/price"
+Title <- xpathSApply(xmlDoc,xpathEx1,xmlValue)
+Price <- xpathSApply(xmlDoc,xpathEx2,xmlValue)
+df4 <- data.frame(Title,Price)
+df4
+```
+
+Question 5
+Number of books that cost lesser than $5
+```{r}
+xpathEx <- "count(//catalog/book[price<5.00])"
+Count <- xpathSApply(xmlDoc, xpathEx,xmlValue)
+df5 <- data.frame(Count)
+df5
+```
